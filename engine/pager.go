@@ -1,7 +1,7 @@
 package engine
 
 import (
-	"errors"
+	"fmt"
 	"os"
 	"sync"
 )
@@ -65,24 +65,33 @@ type PagerConfig struct {
 
 // Creates a new pager based on specifics of the PagerConfig
 func NewPager(config PagerConfig) (*Pager, error) {
+	var newPagerErr error
 	// Validate filepath
 	if len(config.FilePath) == 0 {
 		return nil, &PagerError{
 			Op:  "NewPager",
-			Err: errors.New("no file path provided when initializing NewPager"),
+			Err: fmt.Errorf("filepath cannot be empty"),
 		}
 	}
 
-	// Open the file
-	file, err := os.Open(config.FilePath)
-	if err != nil {
-		return nil, &PagerError{
-			Op:  "NewPager",
-			Err: errors.New("unable to open file for new pager"),
+	var file *os.File
+	if config.ReadOnly {
+		file, newPagerErr = os.OpenFile(config.FilePath, os.O_RDONLY, 0)
+		if newPagerErr != nil {
+			return nil, &PagerError{
+				Op:  "NewPager",
+				Err: fmt.Errorf("unable to open file `%s`: %w", config.FilePath, newPagerErr),
+			}
+		}
+	} else {
+		file, newPagerErr = os.OpenFile(config.FilePath, os.O_RDWR|os.O_CREATE, 0644)
+		if newPagerErr != nil {
+			return nil, &PagerError{
+				Op:  "NewPager",
+				Err: fmt.Errorf("unable to open file `%s`: %w", config.FilePath, newPagerErr),
+			}
 		}
 	}
-
-	// Page Cache initializing
 	cache := make(map[PageID]*Page, config.MaxCacheSize)
 	pager := &Pager{
 		file:       file,
@@ -91,17 +100,29 @@ func NewPager(config PagerConfig) (*Pager, error) {
 		nextPageID: 1,
 	}
 
-	// Verify ReadOnly
-	if config.ReadOnly {
-		pager.mutex.TryLock()
-	}
-
 	return pager, nil
 }
 
 // Close closes the pager and flushes any pending writes
 func (p *Pager) Close() error {
-	// TODO: Implement cleanup and file closing
+	flushErr := p.FlushAll()
+	closeErr := p.file.Close()
+	p.pageCache = make(map[PageID]*Page, p.maxPages)
+
+	if flushErr != nil {
+		return &PagerError{
+			Op:  "ClosePager",
+			Err: fmt.Errorf("unable to flush pages: %w", flushErr),
+		}
+	}
+
+	if closeErr != nil {
+		return &PagerError{
+			Op:  "ClosePager",
+			Err: fmt.Errorf("unable to close file: %w", closeErr),
+		}
+	}
+
 	return nil
 }
 
