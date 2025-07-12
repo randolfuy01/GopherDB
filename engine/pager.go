@@ -39,7 +39,7 @@ type PageHeader struct {
 type PageFooter struct {
 	Checksum      uint32
 	PageIntegrity uint32
-	REserved      [24]byte
+	Reserved      [24]byte
 }
 
 type Page struct {
@@ -63,7 +63,7 @@ type PagerConfig struct {
 	ReadOnly     bool
 }
 
-// Creates a new pager based on specifics of the PagerConfig
+// NewPager() creates a new pager based on specifics of the PagerConfig
 func NewPager(config PagerConfig) (*Pager, error) {
 	var newPagerErr error
 	// Validate filepath
@@ -128,11 +128,77 @@ func (p *Pager) Close() error {
 
 // ReadPage reads a page from disk by PageID
 func (p *Pager) ReadPage(pageID PageID) (*Page, error) {
-	// TODO: Implement page reading with caching
-	return nil, nil
+	if pageID > PageID(p.maxPages) {
+		return nil, &PagerError{
+			Op:  "ReadPage",
+			Err: fmt.Errorf("unable to read page: %i", pageID),
+		}
+	}
+
+	offset := int64(pageID) * PageSize
+	file_info, errStat := p.file.Stat()
+	if errStat != nil {
+		return nil, &PagerError{
+			Op:  "ReadPage",
+			Err: fmt.Errorf("unable to get file info: %w", errStat),
+		}
+	}
+	if offset > file_info.Size() {
+		return nil, &PagerError{
+			Op:  "ReadPage",
+			Err: fmt.Errorf("out of bounds of file: %i", pageID),
+		}
+	}
+
+	// Read the file
+	buffer := make([]byte, PageSize)
+	_, errRead := p.file.ReadAt(buffer, offset)
+	if errRead != nil {
+		return nil, &PagerError{
+			Op:  "ReadPage",
+			Err: fmt.Errorf("error reading file from offset: %w", errRead),
+		}
+	}
+
+	// Partition the buffer
+	headerComponent, errHeader := parseHeader(buffer)
+	if errHeader != nil {
+		return nil, &PagerError{
+			Op:  "ReadPage",
+			Err: fmt.Errorf("error reading header component for page %i: %w", pageID, errHeader),
+		}
+	}
+	footerComponent, errFooter := parseFooter(buffer)
+	if errFooter != nil {
+		return nil, &PagerError{
+			Op:  "ReadPage",
+			Err: fmt.Errorf("error reading footer component for page %i: %w", pageID, errFooter),
+		}
+	}
+
+	bodyComponent := buffer[HeaderSize : PageSize-FooterSize]
+
+	page := &Page{
+		Header: headerComponent,
+		Body:   bodyComponent,
+		Footer: footerComponent,
+		dirty:  false,
+	}
+
+	return page, nil
 }
 
-// WritePage writes a page to disk
+func parseHeader(buffer []byte) (PageHeader, error) {
+	var header PageHeader
+	return header, nil
+}
+
+func parseFooter(buffer []byte) (PageFooter, error) {
+	var footer PageFooter
+	return footer, nil
+}
+
+func parseBody(buffer []byte) // WritePage writes a page to disk
 func (p *Pager) WritePage(page *Page) error {
 	// TODO: Implement page writing with ACID compliance
 	return nil
@@ -174,12 +240,14 @@ func (p *Pager) ValidatePage(page *Page) error {
 	return nil
 }
 
-// Page helper methods
-
 // NewPage creates a new page with the given type
 func NewPage(pageType PageType) *Page {
-	// TODO: Implement page creation
-	return nil
+	return &Page{
+		Header: PageHeader{},
+		Body:   make([]byte, MaxBodySize),
+		Footer: PageFooter{},
+		dirty:  false,
+	}
 }
 
 // MarkDirty marks a page as dirty (needs writing)
