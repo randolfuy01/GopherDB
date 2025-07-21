@@ -1,6 +1,7 @@
 package engine
 
 import (
+	"encoding/binary"
 	"fmt"
 	"os"
 	"sync"
@@ -27,19 +28,18 @@ const (
 
 type PageHeader struct {
 	PageID      PageID
-	PageType    PageType
-	RecordCount uint32
-	FreeSpace   uint32
 	NextPageID  PageID
 	PrevPageID  PageID
+	RecordCount uint32
+	FreeSpace   uint32
 	Checksum    uint32
-	Reserved    [24]byte
+	PageType    PageType
+	_           [27]byte
 }
-
 type PageFooter struct {
 	Checksum      uint32
 	PageIntegrity uint32
-	Reserved      [24]byte
+	_             [24]byte
 }
 
 type Page struct {
@@ -47,6 +47,7 @@ type Page struct {
 	Body   []byte
 	Footer PageFooter
 	dirty  bool
+	_      [7]byte
 }
 
 type Pager struct {
@@ -176,7 +177,13 @@ func (p *Pager) ReadPage(pageID PageID) (*Page, error) {
 		}
 	}
 
-	bodyComponent := buffer[HeaderSize : PageSize-FooterSize]
+	bodyComponent := buffer[HeaderSize : HeaderSize+MaxBodySize]
+	if len(bodyComponent) != MaxBodySize {
+		return nil, &PagerError{
+			Op:  "ReadPage",
+			Err: fmt.Errorf("error reading body component for page %i: %w", pageID, errFooter),
+		}
+	}
 
 	page := &Page{
 		Header: headerComponent,
@@ -190,15 +197,25 @@ func (p *Pager) ReadPage(pageID PageID) (*Page, error) {
 
 func parseHeader(buffer []byte) (PageHeader, error) {
 	var header PageHeader
+	header.PageID = PageID(binary.LittleEndian.Uint64(buffer[0:8]))
+	header.NextPageID = PageID(binary.LittleEndian.Uint64(buffer[8:16]))
+	header.PrevPageID = PageID(binary.LittleEndian.Uint64(buffer[16:24]))
+	header.RecordCount = binary.LittleEndian.Uint32(buffer[24:28])
+	header.FreeSpace = binary.LittleEndian.Uint32(buffer[28:32])
+	header.Checksum = binary.LittleEndian.Uint32(buffer[32:36])
+	header.PageType = PageType(buffer[36])
 	return header, nil
 }
 
 func parseFooter(buffer []byte) (PageFooter, error) {
 	var footer PageFooter
+	footerStart := HeaderSize + MaxBodySize
+	footer.Checksum = binary.LittleEndian.Uint32(buffer[footerStart : footerStart+4])
+	footer.PageIntegrity = binary.LittleEndian.Uint32(buffer[footerStart+4 : footerStart+8])
 	return footer, nil
 }
 
-func parseBody(buffer []byte) // WritePage writes a page to disk
+// WritePage writes a page to disk
 func (p *Pager) WritePage(page *Page) error {
 	// TODO: Implement page writing with ACID compliance
 	return nil
