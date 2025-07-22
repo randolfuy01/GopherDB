@@ -36,6 +36,7 @@ type PageHeader struct {
 	PageType    PageType
 	_           [27]byte
 }
+
 type PageFooter struct {
 	Checksum      uint32
 	PageIntegrity uint32
@@ -245,9 +246,12 @@ func (p *Pager) FlushAll() error {
 	return nil
 }
 
-// GetPageCount returns the total number of pages in the database
+// GetPageCount returns the total number of pages from the pager
 func (p *Pager) GetPageCount() uint64 {
 	// TODO: Implement page count retrieval
+	if p.pageCache != nil {
+		return uint64(len(p.pageCache))
+	}
 	return 0
 }
 
@@ -265,123 +269,6 @@ func NewPage(pageType PageType) *Page {
 		Footer: PageFooter{},
 		dirty:  false,
 	}
-}
-
-// MarkDirty marks a page as dirty (needs writing)
-func (p *Page) MarkDirty() {
-	// TODO: Implement dirty flag setting
-}
-
-// IsDirty returns whether the page has been modified
-func (p *Page) IsDirty() bool {
-	// TODO: Implement dirty flag checking
-	return false
-}
-
-// GetFreeSpace returns the amount of free space in the page body
-func (p *Page) GetFreeSpace() uint32 {
-	// TODO: Implement free space calculation
-	return 0
-}
-
-// AddRecord adds a record to the page body
-func (p *Page) AddRecord(data []byte) error {
-	// TODO: Implement record addition
-	return nil
-}
-
-// GetRecord retrieves a record from the page by index
-func (p *Page) GetRecord(index int) ([]byte, error) {
-	// TODO: Implement record retrieval
-	return nil, nil
-}
-
-// DeleteRecord removes a record from the page by index
-func (p *Page) DeleteRecord(index int) error {
-	// TODO: Implement record deletion
-	return nil
-}
-
-// UpdateRecord updates an existing record in the page
-func (p *Page) UpdateRecord(index int, data []byte) error {
-	// TODO: Implement record updating
-	return nil
-}
-
-// Serialize converts the page to bytes for disk storage
-func (p *Page) Serialize() ([]byte, error) {
-	// TODO: Implement page serialization
-	return nil, nil
-}
-
-// Deserialize converts bytes from disk into a page structure
-func DeserializePage(data []byte) (*Page, error) {
-	// TODO: Implement page deserialization
-	return nil, nil
-}
-
-// calculateChecksum computes the checksum for page integrity
-func (p *Page) calculateChecksum() uint32 {
-	// TODO: Implement checksum calculation
-	return 0
-}
-
-// Cache management methods
-
-// evictLRU evicts the least recently used page from cache
-func (p *Pager) evictLRU() error {
-	// TODO: Implement LRU eviction
-	return nil
-}
-
-// addToCache adds a page to the cache
-func (p *Pager) addToCache(page *Page) {
-	// TODO: Implement cache addition
-}
-
-// removeFromCache removes a page from the cache
-func (p *Pager) removeFromCache(pageID PageID) {
-	// TODO: Implement cache removal
-}
-
-// File I/O helper methods
-
-// readPageFromDisk reads a page directly from disk
-func (p *Pager) readPageFromDisk(pageID PageID) (*Page, error) {
-	// TODO: Implement disk reading
-	return nil, nil
-}
-
-// writePageToDisk writes a page directly to disk
-func (p *Pager) writePageToDisk(page *Page) error {
-	// TODO: Implement disk writing
-	return nil
-}
-
-// getFileOffset converts a PageID to a file offset
-func (p *Pager) getFileOffset(pageID PageID) int64 {
-	// TODO: Implement offset calculation
-	return int64(pageID)
-}
-
-// Transaction support methods (for ACID compliance)
-
-// BeginTransaction starts a new transaction context
-func (p *Pager) BeginTransaction() error {
-	// TODO: Implement transaction begin
-	return nil
-}
-
-// CommitTransaction commits all changes in the current transaction
-func (p *Pager) CommitTransaction() error {
-	// TODO: Implement transaction commit
-	return nil
-}
-
-// RollbackTransaction rolls back all changes in the current transaction
-func (p *Pager) RollbackTransaction() error {
-	// TODO: Implement transaction rollback
-	return nil
 }
 
 // Error types for the pager
