@@ -133,7 +133,7 @@ func (p *Pager) ReadPage(pageID PageID) (*Page, error) {
 	if pageID > PageID(p.maxPages) {
 		return nil, &PagerError{
 			Op:  "ReadPage",
-			Err: fmt.Errorf("unable to read page: %i", pageID),
+			Err: fmt.Errorf("unable to read page: %d", pageID),
 		}
 	}
 
@@ -148,7 +148,7 @@ func (p *Pager) ReadPage(pageID PageID) (*Page, error) {
 	if offset > file_info.Size() {
 		return nil, &PagerError{
 			Op:  "ReadPage",
-			Err: fmt.Errorf("out of bounds of file: %i", pageID),
+			Err: fmt.Errorf("out of bounds of file: %d", pageID),
 		}
 	}
 
@@ -167,14 +167,14 @@ func (p *Pager) ReadPage(pageID PageID) (*Page, error) {
 	if errHeader != nil {
 		return nil, &PagerError{
 			Op:  "ReadPage",
-			Err: fmt.Errorf("error reading header component for page %i: %w", pageID, errHeader),
+			Err: fmt.Errorf("error reading header component for page %d: %w", pageID, errHeader),
 		}
 	}
 	footerComponent, errFooter := parseFooter(buffer)
 	if errFooter != nil {
 		return nil, &PagerError{
 			Op:  "ReadPage",
-			Err: fmt.Errorf("error reading footer component for page %i: %w", pageID, errFooter),
+			Err: fmt.Errorf("error reading footer component for page %d: %w", pageID, errFooter),
 		}
 	}
 
@@ -182,7 +182,7 @@ func (p *Pager) ReadPage(pageID PageID) (*Page, error) {
 	if len(bodyComponent) != MaxBodySize {
 		return nil, &PagerError{
 			Op:  "ReadPage",
-			Err: fmt.Errorf("error reading body component for page %i: %w", pageID, errFooter),
+			Err: fmt.Errorf("error reading body component for page %d: %w", pageID, errFooter),
 		}
 	}
 
@@ -280,11 +280,3 @@ type PagerError struct {
 func (e *PagerError) Error() string {
 	return e.Op + ": " + e.Err.Error()
 }
-
-// Common error variables
-var (
-	ErrPageNotFound      = &PagerError{Op: "page_not_found", Err: nil}
-	ErrPageCorrupted     = &PagerError{Op: "page_corrupted", Err: nil}
-	ErrInsufficientSpace = &PagerError{Op: "insufficient_space", Err: nil}
-	ErrInvalidPageID     = &PagerError{Op: "invalid_page_id", Err: nil}
-)
